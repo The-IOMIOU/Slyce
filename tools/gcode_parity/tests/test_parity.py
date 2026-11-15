@@ -1,4 +1,5 @@
 # Copyright (c) 2026 Tiberiu Bolohan. Licensed under AGPL-3.0
+import json
 import math
 import struct
 import sys
@@ -13,6 +14,7 @@ from gcode_parity.parse import parse_gcode  # noqa: E402
 from gcode_parity.compare import compare, IDENTICAL, DIFFERS, WITHIN  # noqa: E402
 from gcode_parity.models import GENERATORS, write_stl  # noqa: E402
 from gcode_parity.run import extract_gcode, main  # noqa: E402
+from gcode_parity.presets import flatten  # noqa: E402
 
 BAMBU_STYLE = """\
 ; HEADER_BLOCK_START
@@ -152,6 +154,47 @@ class IoTests(unittest.TestCase):
                 (count,) = struct.unpack_from("<I", data, 80)
                 self.assertEqual(count, len(tris))
                 self.assertEqual(len(data), 84 + 50 * count)
+
+
+class ModelGeometryTests(unittest.TestCase):
+    def test_models_are_closed_and_outward_facing(self):
+        import collections
+        for name, gen in GENERATORS.items():
+            with self.subTest(name=name):
+                tris = gen()
+                edges = collections.Counter()
+                for t in tris:
+                    for k in range(3):
+                        edges[(t[k], t[(k + 1) % 3])] += 1
+                # Every directed edge appears once and its reverse once: closed and consistently wound.
+                for (a, b), n in edges.items():
+                    self.assertEqual(n, 1)
+                    self.assertEqual(edges.get((b, a), 0), 1)
+                volume = sum((a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0])
+                              + a[2] * (b[0] * c[1] - b[1] * c[0])) / 6 for a, b, c in tris)
+                self.assertGreater(volume, 0)
+
+
+class FlattenTests(unittest.TestCase):
+    def test_flatten_follows_inherits_and_include_in_loader_order(self):
+        with tempfile.TemporaryDirectory() as d:
+            vendor = Path(d) / "profiles" / "V"
+            (vendor / "machine").mkdir(parents=True)
+            def put(name, data):
+                (vendor / "machine" / f"{name}.json").write_text(json.dumps(data))
+            put("common", {"type": "machine", "name": "common", "instantiation": "false", "setting_id": "X",
+                           "nozzle_diameter": ["0.4"], "machine_start_gcode": "old", "retraction_length": ["1"]})
+            put("tmpl", {"type": "machine", "name": "tmpl", "machine_start_gcode": "G28 ; from template"})
+            put("leaf", {"type": "machine", "name": "leaf", "inherits": "common", "include": ["tmpl"],
+                         "from": "system", "setting_id": "GM1", "instantiation": "true", "retraction_length": ["0.8"]})
+            flat = flatten(vendor / "machine" / "leaf.json", vendor)
+            self.assertEqual(flat["nozzle_diameter"], ["0.4"])                     # inherited
+            self.assertEqual(flat["machine_start_gcode"], "G28 ; from template")   # include over parent
+            self.assertEqual(flat["retraction_length"], ["0.8"])                   # own over both
+            self.assertEqual(flat["setting_id"], "GM1")                             # leaf bookkeeping only
+            self.assertEqual(flat["from"], "system")
+            self.assertNotIn("inherits", flat)
+            self.assertNotIn("include", flat)
 
 
 if __name__ == "__main__":

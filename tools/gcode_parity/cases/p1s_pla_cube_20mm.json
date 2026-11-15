@@ -1,0 +1,10 @@
+{
+  "name": "p1s_pla_cube_20mm",
+  "model": "cube_20mm",
+  "settings": [
+    "BBL/machine/Bambu Lab P1S 0.4 nozzle.json",
+    "BBL/process/0.20mm Standard @BBL X1C.json"
+  ],
+  "filaments": ["BBL/filament/Bambu PLA Basic @BBL X1C.json"],
+  "extra_args": []
+}

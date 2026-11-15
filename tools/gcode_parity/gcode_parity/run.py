@@ -18,6 +18,7 @@ from pathlib import Path
 from .compare import compare, results_to_dict, DIFFERS, IDENTICAL
 from .models import GENERATORS, generate
 from .parse import parse_gcode
+from .presets import PresetIndex, flatten_to
 
 HERE = Path(__file__).resolve().parent.parent
 CASES_DIR = HERE / "cases"
@@ -54,6 +55,25 @@ def _resolve(case_value: str, base: Path | None) -> Path:
     return p if p.is_absolute() or base is None else base / p
 
 
+_INDEXES: dict[Path, PresetIndex] = {}
+
+
+def _vendor_dir(preset: Path) -> Path:
+    """The vendor folder a preset belongs to: the child of `profiles` on its path (e.g. profiles/BBL)."""
+    for parent in preset.resolve().parents:
+        if parent.parent.name == "profiles":
+            return parent
+    return preset.resolve().parents[1]
+
+
+def _index(vendor_dir: Path) -> PresetIndex:
+    """One preset index per vendor folder; scanning a folder is the slow part of flattening."""
+    vendor_dir = vendor_dir.resolve()
+    if vendor_dir not in _INDEXES:
+        _INDEXES[vendor_dir] = PresetIndex(vendor_dir)
+    return _INDEXES[vendor_dir]
+
+
 def render_markdown(name: str, results) -> str:
     lines = [f"## {name}", "", "| Category | Status | Summary |", "| --- | --- | --- |"]
     for r in results:
@@ -82,6 +102,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--cases", type=Path, default=CASES_DIR)
     ap.add_argument("--out", type=Path, default=Path("parity-report"))
     ap.add_argument("--timeout", type=int, default=900)
+    ap.add_argument("--no-flatten", action="store_true",
+                    help="pass preset files as they are instead of flattening inherits/include first")
     args = ap.parse_args(argv)
 
     if args.compare:
@@ -108,6 +130,11 @@ def main(argv: list[str] | None = None) -> int:
                                 ("candidate", args.candidate, args.candidate_profiles)):
             settings = [_resolve(p, prof) for p in case.get("settings", [])]
             filaments = [_resolve(p, prof) for p in case.get("filaments", [])]
+            if not args.no_flatten:
+                # A preset passed by path loses everything it inherits; hand the CLI a flattened copy.
+                flat_dir = work / f"{role}_presets"
+                settings = [flatten_to(p, _vendor_dir(p), flat_dir, _index(_vendor_dir(p))) for p in settings]
+                filaments = [flatten_to(p, _vendor_dir(p), flat_dir, _index(_vendor_dir(p))) for p in filaments]
             out_3mf = work / f"{role}.gcode.3mf"
             proc = slice_with(exe, model, settings, filaments, out_3mf,
                               case.get("extra_args", []), args.timeout)

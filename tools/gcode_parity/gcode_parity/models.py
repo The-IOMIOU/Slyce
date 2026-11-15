@@ -68,10 +68,28 @@ def overhang_ramp(width: float = 20.0, length: float = 30.0, height: float = 15.
     out += _quad(a, b, d, c)          # back wall
     out.append((a, c, e))             # side
     out.append((b, f, d))             # side
+    return [(t[0], t[2], t[1]) for t in out]   # wound so normals point outwards
+
+
+def square_tube(size: float = 20.0, wall: float = 4.0, height: float = 10.0) -> list[Tri]:
+    """A square tube: one contour and one hole, to compare loop direction and seams."""
+    o, i = size, size - wall
+    w = wall
+    out: list[Tri] = []
+    outer = [(0, 0), (o, 0), (o, o), (0, o)]
+    inner = [(w, w), (i, w), (i, i), (w, i)]
+    for k in range(4):
+        (ax, ay), (bx, by) = outer[k], outer[(k + 1) % 4]
+        out += _quad((ax, ay, 0), (bx, by, 0), (bx, by, height), (ax, ay, height))       # outside, facing out
+        (cx, cy), (dx, dy) = inner[k], inner[(k + 1) % 4]
+        out += _quad((dx, dy, 0), (cx, cy, 0), (cx, cy, height), (dx, dy, height))       # inside, facing in
+        out += _quad((ax, ay, height), (bx, by, height), (dx, dy, height), (cx, cy, height))  # top ring
+        out += _quad((ax, ay, 0), (cx, cy, 0), (dx, dy, 0), (bx, by, 0))                 # bottom ring
     return out
 
 
 GENERATORS = {
+    "square_tube": square_tube,
     "cube_20mm": lambda: box(20, 20, 20),
     "cylinder_r10_h20": lambda: cylinder(10, 20),
     "overhang_ramp": overhang_ramp,

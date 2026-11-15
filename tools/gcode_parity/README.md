@@ -35,9 +35,10 @@ Generated models (`cube_20mm`, `cylinder_r10_h20`, `overhang_ramp`) avoid third-
 
 ## Known limits (honest list)
 
-- **Not yet run against a real Bambu Studio binary.** The CLI flags follow both projects' wikis,
-  but whether system presets with `inherits` resolve when passed by path must be checked on the
-  first run; OrcaSlicer's own test repo flattens inherited presets first for this reason.
+- Presets are **flattened** before slicing (`gcode_parity/presets.py`): a system preset passed by path
+  loses everything it inherits, so both CLIs fell back to built-in defaults (checked on Bambu Studio
+  02.09.01.70: `top_surface_pattern` came out as zig-zag instead of monotonic line, filament density 0).
+  The flattener follows `inherits` and `include` in the loaders' order. `--no-flatten` turns it off.
 - Position comparison only runs on layers whose extrusion move counts match; other layers are
   counted as skipped and the category is marked `differs`.
 - Layers are aligned by index, not by Z. A one-layer offset makes everything after it differ —
