@@ -1,0 +1,10 @@
+{
+  "name": "x1c_pla_overhang_ramp",
+  "model": "overhang_ramp",
+  "settings": [
+    "BBL/machine/Bambu Lab X1 Carbon 0.4 nozzle.json",
+    "BBL/process/0.20mm Standard @BBL X1C.json"
+  ],
+  "filaments": ["BBL/filament/Bambu PLA Basic @BBL X1C.json"],
+  "extra_args": []
+}
