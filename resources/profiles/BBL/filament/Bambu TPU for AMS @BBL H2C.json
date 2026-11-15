@@ -86,7 +86,7 @@
     "filament_retraction_length": [
         "0.4",
         "0.4",
-        "0.4"
+        "1"
     ],
     "first_x_layer_fan_speed": [
         "0"

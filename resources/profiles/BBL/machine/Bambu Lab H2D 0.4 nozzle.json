@@ -57,6 +57,15 @@
 		"2",
 		"2"
 	],
+	"hotend_cooling_rate_on_rack": [
+		"2",
+		"2",
+		"2",
+		"2",
+		"2",
+		"2",
+		"2"
+	],
 	"hotend_heating_rate": [
 		"3.6",
 		"3.6",
@@ -468,7 +477,6 @@
 		"319",
 		"319"
 	],
-	"support_air_filtration": "1",
 	"support_cooling_filter": "1",
 	"support_chamber_temp_control": "1",
 	"support_object_skip_flush": "0",
