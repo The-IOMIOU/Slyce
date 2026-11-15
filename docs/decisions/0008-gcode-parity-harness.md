@@ -26,6 +26,12 @@ does not matter.
 
 The `.gcode.3mf` is a zip with `Metadata/plate_<n>.gcode`; the harness extracts it.
 
+**Presets must be flattened.** Checked against Bambu Studio 02.09.01.70: a system preset passed by path
+keeps only its own keys and everything it inherits falls back to built-in defaults (the slice came out
+with a zig-zag top surface and filament density 0). The harness therefore merges each preset's `inherits`
+and `include` chain into one self-contained file marked `from: system` before calling either CLI, the same
+approach as OrcaSlicer's test suite, extended to `include` templates.
+
 ## What is compared
 
 The harness parses G-code into a normalised event stream and compares by category:

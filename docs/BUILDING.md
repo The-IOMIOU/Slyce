@@ -23,7 +23,12 @@ dependency download fails with `certificate signer not trusted`. Point CMake at 
 ```bat
 copy "C:\Program Files\Git\mingw64\etc\ssl\certs\ca-bundle.crt" C:\dev\cacert.pem
 build_win.bat -d -c --vs 2026 --deps-args "-DCMAKE_TLS_CAINFO=C:/dev/cacert.pem"
+build_win.bat -s --vs 2026 --slicer-args "-DCMAKE_TLS_CAINFO=C:/dev/cacert.pem"
 ```
+
+OpenSSL's configure step also needs a native Windows Perl ([Strawberry Perl](https://strawberryperl.com/),
+`winget install StrawberryPerl.StrawberryPerl`), not the MSYS Perl that ships with Git; put
+`C:\Strawberry\perl\bin` first on `PATH` for the dependency build.
 
 ## Running the G-code parity harness
 
