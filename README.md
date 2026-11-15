@@ -23,7 +23,8 @@ that work, and its authors keep the credit and the copyright.
 | Feature | Status |
 | --- | --- |
 | Slicer with a Bambu Studio-style layout and Bambu printer profiles | ✅ inherited from OrcaSlicer |
-| G-code close to Bambu Studio's for the same model and settings | 🧪 harness built, **parity not yet measured** |
+| Bambu printer presets identical to Bambu Studio's (P1S and P2S first, all models but H3C) | ✅ verified value-by-value against Bambu Studio 02.09.01.70 |
+| G-code close to Bambu Studio's for the same model and settings | 🧪 harness built; a few Bambu-only engine features still to port; **parity not yet measured** |
 | Parametric CAD (OCCT kernel, constraint sketches, feature timeline) | ✅ inherited Design tab · Fusion-style layout *planned* |
 | Direct LAN sending to Bambu printers with an open client | *planned* (phase 2) |
 | MCP server for Claude, Codex and other agents | *planned* (phase 3) |
@@ -38,6 +39,8 @@ that work, and its authors keep the credit and the copyright.
   plugins), built from this repository.
 - Slyce keeps its settings in its own folder (`%APPDATA%\Slyce`, `~/Library/Application Support/Slyce`,
   `~/.config/Slyce`), so it can sit next to an OrcaSlicer install without touching it.
+- Bambu machine, process and filament presets carry Bambu Studio 02.09.01.70's exact values
+  ([decision 0011](docs/decisions/0011-bambu-presets.md)).
 - `tools/gcode_parity`: a harness that slices the same cases in Bambu Studio and Slyce and reports
   per-category differences. Its self-tests run in CI on Windows, macOS and Linux.
 

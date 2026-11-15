@@ -57,7 +57,8 @@ used below are exact: **inherited** means it is upstream OrcaSlicer code we have
 | Bambu LAN agent (MQTT 8883 / FTPS 990 / camera) | planned (phase 2) | [0005](decisions/0005-bambu-connectivity.md) |
 | MCP server + local control API | planned (phase 3) | [0006](decisions/0006-mcp-server.md) |
 | Fusion-style layout for the Design tab | planned (phase 4) | [0003](decisions/0003-cad-kernel-and-solver.md) |
-| Stress simulation | planned (phase 5); solver choice blocked on a licence question | [0004](decisions/0004-fea-solver.md) |
+| Stress simulation (MFEM + CGAL, in-process) | planned (phase 5) | [0004](decisions/0004-fea-solver.md) |
+| Bambu presets identical to Bambu Studio 02.09.01.70 | done (all models except H3C); Bambu-only engine features still to port | [0011](decisions/0011-bambu-presets.md) |
 | Non-planar technique plugins | research only (phase 6) | [0007](decisions/0007-nonplanar-printing.md) |
 | Strengthening + AI design help | planned (phase 7), consumes FEA results and MCP tools | [0010](decisions/0010-strengthening-and-ai.md) |
 
@@ -71,7 +72,7 @@ used below are exact: **inherited** means it is upstream OrcaSlicer code we have
 
 Slyce adds two branches to that loop:
 
-- **Simulate** (planned) takes the same OCCT/mesh geometry, meshes it, solves it out of process,
+- **Simulate** (planned) takes the same OCCT/mesh geometry, meshes it (CGAL), solves it in-process (MFEM),
   and maps the stress field back onto the model. The stress field is also the input for
   strengthening (ribs, wall counts, stress-following infill density).
 - **Technique plugins** (planned) replace the planar layer generator for objects that opt in.

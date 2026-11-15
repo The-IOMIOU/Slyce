@@ -1,59 +1,63 @@
 <!-- Copyright (c) 2026 Tiberiu Bolohan. Licensed under AGPL-3.0 -->
 # 0004 — Stress simulation: solver and mesher
 
-**Status:** Proposed. **Blocked on an owner decision about a licence question (see below).**
+**Status:** Accepted (2026-11-15). Implementation is phase 5.
 
-## Requirements (from the brief)
+## Requirements
 
-Linear static stress for point and distributed loads, impact, thermal, and internal gas pressure;
-orthotropic material properties for printed parts; safety-factor heatmap; validation against
-analytic cases in CI. Embeddable on Windows, macOS and Linux.
+- **Built into the app.** The owner's requirement: Slyce is all-in-one, so the solver and mesher
+  are compiled into Slyce and run in-process. No external solver executable.
+- Linear static stress for point and distributed loads, thermal, internal gas pressure; impact
+  (transient); orthotropic material for printed parts; safety-factor heatmap; analytic validation in CI.
+- Licence compatible with AGPL-3.0 **for linking**.
 
 ## Candidates
 
-| | Licence | Notes |
-| --- | --- | --- |
-| [CalculiX ccx](https://github.com/Dhondtguido/CalculiX) | **GPL-2.0-only.** Source headers read "under the terms of the GNU General Public License as published by the Free Software Foundation(version 2)" with no "or later" clause (checked `src/absolute_relative.f`). | Mature, Abaqus-style input deck, orthotropic materials, static/thermal/dynamic. Used by FreeCAD FEM. |
-| [FEniCSx / DOLFINx](https://github.com/FEniCS/dolfinx) | LGPL-3.0 | Very flexible; heavy runtime (Python, PETSc, MPI). Windows support is weaker. |
-| [Elmer](https://github.com/ElmerCSC/elmerfem) | GPL-2.0 (solver) / LGPL-2.1 (libraries); "or later" not verified | Multiphysics; large. |
-| Code_Aster | GPL-3.0 | Very capable; heavy and Linux-centred. |
-| [Gmsh](https://gmsh.info/) (mesher) | GPL-2.0-or-later with a linking exception | Tet meshing from STEP/STL; Python and C++ API. |
-| TetGen (mesher) | AGPL-3.0 (TetGen 1.6; to verify against the upstream tarball) | Tet meshing. |
+| | Licence (checked in each repo) | Linkable into AGPL-3.0? | Notes |
+| --- | --- | --- | --- |
+| [CalculiX ccx](https://github.com/Dhondtguido/CalculiX) | GPL-2.0-only (source headers: "version 2", no "or later") | **No** | Rejected: cannot be linked, and the owner does not want an external process. |
+| [MFEM](https://github.com/mfem/mfem) | BSD-3-Clause | Yes | C++ finite-element library from LLNL. Serial build has no mandatory dependencies. Linear elasticity, diffusion (thermal) and time-dependent examples ship with it. |
+| [deal.II](https://github.com/dealii/dealii) | LGPL-2.1-or-later (repo `LICENSE.md`) | Yes | Very capable; heavier build (Boost, TBB, optional PETSc/Trilinos). |
+| [libMesh](https://github.com/libMesh/libmesh) | LGPL-2.1 | Yes | Capable; heavier build. |
+| [FEniCSx / DOLFINx](https://github.com/FEniCS/dolfinx) | LGPL-3.0 | Yes | Python + PETSc + MPI runtime: too heavy to embed. |
+| [CGAL Mesh_3](https://github.com/CGAL/cgal) | GPL-3.0-or-later (`Mesh_3/package_info/Mesh_3/license.txt`) | Yes | Tetrahedral meshing of a closed triangle mesh. **CGAL 6.2.1 is already a Slyce dependency** (`deps/CGAL`). |
+| [Gmsh](https://gmsh.info/) | GPL-2.0-or-later + exception | Yes (as GPL-3) | Good mesher, but a new dependency where CGAL already covers the need. |
+| Eigen | MPL-2.0 | Yes | Already a dependency; sparse direct/iterative solvers as a fallback. |
 
-## The licence question
+## Decision
 
-GPL-2.0-only code cannot be combined into an AGPL-3.0 program (the GPLv2 has no compatibility
-clause with v3-family licences). So CalculiX **cannot be linked into Slyce**.
+- **Mesher: CGAL Mesh_3** (already linked; no new dependency).
+- **Solver: MFEM**, built serial (no MPI) as a new entry in `deps/`, the same way the other
+  dependencies are built.
+- Everything runs in-process on a worker thread with progress and cancel, like slicing does.
 
-It may still be usable as a **separate program**: Slyce writes an input deck, runs `ccx` as a
-subprocess, and reads the result files. The FSF's position is that pipes, sockets and command-line
-arguments between separate programs are normally "mere aggregation", but that is a legal
-judgment, and the brief says licence conflicts go to the owner. **We have not decided this.**
+## Known work and unknowns (not guessed)
 
-## Proposed decision (pending owner answer)
+- MFEM's stock `ElasticityIntegrator` is isotropic (Lamé λ, μ). Orthotropic printed material
+  needs an integrator that takes the full stiffness tensor rotated into each part's layer frame.
+  That integrator has to be written (a small, testable class), or taken from an existing MFEM
+  example if one is found during implementation; to be checked first.
+- Impact: start with an equivalent static load (energy method) clearly labelled as an estimate;
+  a transient solve is a later step.
+- Internal gas pressure: a pressure traction on the inner surfaces of enclosed cavities. Detecting
+  sealed cavities from the sliced geometry (infill + walls) is its own research item.
+- Solver performance for ~10⁵–10⁶ unknowns on desktop hardware: to be measured, not assumed.
 
-- **Mesher:** Gmsh (used under GPL-3.0, compatible).
-- **Solver, option A (preferred technically):** CalculiX `ccx` as an external, separately
-  distributed executable, driven through input files only. Never linked, never patched in-tree.
-- **Solver, option B (no licence question):** FEniCSx (LGPL-3.0), run out of process from the
-  embedded Python runtime. Heavier install, weaker Windows story.
+## Validation plan (CI)
 
-## Validation plan (applies to either option)
-
-CI cases with closed-form answers, each with a stated tolerance:
+Closed-form cases, each with a stated tolerance:
 1. Cantilever, end point load: tip deflection `δ = F L³ / (3 E I)`, root stress `σ = F L c / I`.
 2. Thin-walled cylinder under internal pressure: hoop `σ = p r / t`, axial `σ = p r / (2 t)`.
 3. Thick sphere under pressure (Lamé).
-4. Uniform bar under thermal expansion with fixed ends: `σ = E α ΔT`.
+4. Bar with fixed ends under uniform heating: `σ = E α ΔT`.
+5. Orthotropic block under uniaxial load in each material axis: strains match the compliance matrix.
 
 ## Material data
 
-Printed parts are orthotropic: in-plane (along strands) stiffness and strength are higher than
-across layers. Sources to read before choosing numbers (not yet extracted):
+Orthotropic properties for FDM parts must be traced to published measurements before any number
+ships. Sources to read first:
 - Li, Xu, Fang et al., orthotropic interlayer bonding of FDM PLA,
   [UTS repository PDF](https://opus.lib.uts.edu.au/bitstream/10453/186075/2/1-s2.0-S026382312400243X-main.pdf).
 - Desktop FDM PLA Z-strength study, [PMC6414919](https://pmc.ncbi.nlm.nih.gov/articles/PMC6414919).
 - Orthotropic elastic characterisation of FDM PLA via multi-axial testing,
   [Biopolymer Applications Journal](https://univ-bejaia.dz/revue/baj/article/view/839).
-
-No material numbers will ship until they are traced to one of these (or better) sources.
