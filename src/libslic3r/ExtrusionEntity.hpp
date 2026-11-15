@@ -662,6 +662,59 @@ inline void extrusion_entities_append_paths_with_wipe(ExtrusionEntitiesPtr &dst,
     dst.shrink_to_fit();
 }
 
+// Slyce: Bambu Studio's variant (bambulab/BambuStudio, src/libslic3r/ExtrusionEntity.hpp). Links between
+// consecutive lines first run `overlap_gap_compensation_ratio` x width further along each line's direction,
+// so monotonic-line top surfaces reach the walls the way Bambu Studio prints them.
+inline void extrusion_entities_append_paths_with_wipe(ExtrusionEntitiesPtr &dst, Polylines &&polylines, ExtrusionRole role, double mm3_per_mm,
+                                                      float width, float height, float overlap_gap_compensation_ratio)
+{
+    if (polylines.empty())
+        return;
+
+    constexpr double overlap_rate = 1.0;
+    dst.reserve(dst.size() + polylines.size());
+    Point last_end_point;
+    Vec2d last_direction = Vec2d::Zero();
+    bool  last_end_point_valid = false;
+    ExtrusionMultiPath *multi_path = new ExtrusionMultiPath();
+    for (Polyline &polyline : polylines) {
+        if (! polyline.is_valid())
+            continue;
+        if (last_end_point_valid) {
+            Point temp = polyline.first_point() - last_end_point;
+            if (Vec2d(temp.x(), temp.y()).norm() <= 3 * scaled(width)) {
+                multi_path->paths.emplace_back(role, mm3_per_mm, width, height, true);
+                if (overlap_gap_compensation_ratio > EPSILON) {
+                    Polyline connect_line;
+                    Vec2d curr_direction = (polyline.first_point() - polyline.last_point()).cast<double>().normalized();
+                    Vec2d offset_vector  = last_direction * overlap_rate * scaled(width * overlap_gap_compensation_ratio);
+                    Point overlap_last_p = last_end_point + offset_vector.cast<coord_t>();
+                    offset_vector        = curr_direction * overlap_rate * scaled(width * overlap_gap_compensation_ratio);
+                    Point overlap_curr_p = polyline.first_point() + offset_vector.cast<coord_t>();
+                    connect_line.points  = { last_end_point, overlap_last_p, overlap_curr_p, polyline.first_point() };
+                    multi_path->paths.back().polyline = Polyline3(connect_line);
+                } else {
+                    multi_path->paths.back().polyline = Polyline3(Polyline(last_end_point, polyline.first_point()));
+                }
+            } else {
+                dst.push_back(multi_path);
+                multi_path = new ExtrusionMultiPath();
+            }
+        }
+        multi_path->paths.emplace_back(role, mm3_per_mm, width, height);
+        multi_path->paths.back().polyline = Polyline3(std::move(polyline));
+        last_end_point_valid = true;
+        last_end_point = multi_path->paths.back().polyline.last_point().to_point();
+        last_direction = (last_end_point - multi_path->paths.back().polyline.first_point().to_point()).cast<double>().normalized();
+    }
+    if (! multi_path->empty())
+        dst.push_back(multi_path);
+    else
+        delete multi_path;
+    polylines.clear();
+    dst.shrink_to_fit();
+}
+
 inline void extrusion_entities_append_loops(ExtrusionEntitiesPtr &dst, Polygons &&loops, ExtrusionRole role, double mm3_per_mm, float width, float height)
 {
     dst.reserve(dst.size() + loops.size());

@@ -99,6 +99,12 @@ public:
     const PrintRegionConfig     *config;
     const PrintObjectConfig     *object_config;
     const PrintConfig           *print_config;
+    // Slyce: true on Bambu Lab printers. Loops then follow Bambu Studio's rule: every loop, holes
+    // included, runs counter-clockwise, or clockwise when print_config->print_in_clockwise is set.
+    bool                         bambu_loop_direction = false;
+    // Slyce: whether a loop is to be counter-clockwise. `runs_with_contour` is true for contours
+    // and for loops that OrcaSlicer runs in the contour's direction (thin wall holes).
+    bool loop_counter_clockwise(bool runs_with_contour) const;
     // Outputs:
     ExtrusionEntityCollection   *loops;
     ExtrusionEntityCollection   *gap_fill;

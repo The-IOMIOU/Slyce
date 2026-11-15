@@ -1690,6 +1690,7 @@ bool PrintObject::invalidate_state_by_config_options(
             steps.emplace_back(posPrepareInfill);
         } else if (
                opt_key == "top_surface_pattern"
+            || opt_key == "monotonic_travel_into_wall" // Slyce
             || opt_key == "bottom_surface_pattern"
             || opt_key == "top_surface_fill_order"
             || opt_key == "bottom_surface_fill_order"

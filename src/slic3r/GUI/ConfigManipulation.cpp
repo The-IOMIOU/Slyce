@@ -1165,6 +1165,8 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig *config, in
     toggle_field("print_order", !have_sequential_printing, -1, _L("Print order cannot be edited when the print sequence is By object."));
 
     toggle_field("single_extruder_multi_material", !is_BBL_Printer, -1, _L("This setting is unavailable for Bambu Lab printers."));
+    // Slyce: on Bambu printers loops follow the printer's print_in_clockwise, as in Bambu Studio.
+    toggle_field("wall_direction", !is_BBL_Printer, -1, _L("On Bambu Lab printers the wall loop direction is set by the printer setting \"Print loops clockwise\", as in Bambu Studio."));
 
     auto bSEMM = preset_bundle->printers.get_edited_preset().config.opt_bool("single_extruder_multi_material");
     const bool supports_wipe_tower_2 = !is_BBL_Printer && preset_bundle->printers.get_edited_preset().config.opt_enum<WipeTowerType>("wipe_tower_type") == WipeTowerType::Type2;

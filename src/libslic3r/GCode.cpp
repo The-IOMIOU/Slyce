@@ -8548,7 +8548,10 @@ std::string GCode::extrude_loop(const ExtrusionLoop&                       loop_
 
     if (m_config.spiral_mode && !is_hole) {
         // if spiral vase, we have to ensure that all contour are in the same orientation.
-        if (m_config.wall_direction == WallDirection::CounterClockwise)
+        // Slyce: on Bambu printers the direction is the printer's print_in_clockwise, as in
+        // Bambu Studio (see PerimeterGenerator::loop_counter_clockwise).
+        const bool bambu = m_curr_print != nullptr && m_curr_print->is_BBL_printer();
+        if (bambu ? !m_config.print_in_clockwise.value : m_config.wall_direction == WallDirection::CounterClockwise)
             loop.make_counter_clockwise();
         else
             loop.make_clockwise();

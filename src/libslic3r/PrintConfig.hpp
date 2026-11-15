@@ -1469,6 +1469,8 @@ PRINT_CONFIG_CLASS_DEFINE(
     ((ConfigOptionPercent,              top_surface_density))
     ((ConfigOptionPercent,               bottom_surface_density))
     ((ConfigOptionEnum<InfillPattern>,  top_surface_pattern))
+    // Slyce: Bambu Studio's monotonic-line link extension, used on Bambu printers.
+    ((ConfigOptionPercent,              monotonic_travel_into_wall))
     ((ConfigOptionEnum<InfillPattern>,  bottom_surface_pattern))
     ((ConfigOptionEnum<SurfaceFillOrder>, top_surface_fill_order))
     ((ConfigOptionEnum<SurfaceFillOrder>, bottom_surface_fill_order))
@@ -1854,6 +1856,8 @@ PRINT_CONFIG_CLASS_DEFINE(
     ((ConfigOptionBool,                auxiliary_fan))
     ((ConfigOptionEnum<FanDirection>,  fan_direction))
     ((ConfigOptionBool,                support_air_filtration))
+    // Slyce: Bambu Studio's loop direction for Bambu printers, see GCode::extrude_loop.
+    ((ConfigOptionBool,                print_in_clockwise))
     ((ConfigOptionBool,                support_cooling_filter))
     ((ConfigOptionBool,                cooling_filter_enabled))
     ((ConfigOptionEnum<PrinterStructure>,printer_structure))

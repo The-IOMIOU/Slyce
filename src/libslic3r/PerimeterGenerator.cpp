@@ -300,7 +300,7 @@ static ExtrusionEntityCollection traverse_loops(const PerimeterGenerator &perime
             coll.entities[idx.first] = nullptr;
 
             // Orca: holes run against the contour, except thin wall holes, which run with it.
-            if ((perimeter_generator.config->wall_direction == WallDirection::CounterClockwise) == (loop.is_contour || loop.is_thin_wall_hole))
+            if (perimeter_generator.loop_counter_clockwise(loop.is_contour || loop.is_thin_wall_hole))
                 eloop->make_counter_clockwise();
             else
                 eloop->make_clockwise();
@@ -564,8 +564,7 @@ static ExtrusionEntityCollection traverse_extrusions(const PerimeterGenerator& p
             if (extrusion->is_closed) {
                 ExtrusionLoop extrusion_loop(std::move(paths), pg_extrusion.is_contour ? elrDefault : elrHole);
                 extrusion_loop.inset_idx = extrusion->inset_idx;
-                if ((perimeter_generator.config->wall_direction == WallDirection::CounterClockwise) ==
-                    (pg_extrusion.is_contour || pg_extrusions.size() == 2))
+                if (perimeter_generator.loop_counter_clockwise(pg_extrusion.is_contour || pg_extrusions.size() == 2))
                     extrusion_loop.make_counter_clockwise();
                 else
                     extrusion_loop.make_clockwise();  
@@ -1360,6 +1359,17 @@ void PerimeterGenerator::apply_extra_perimeters(ExPolygons &infill_area)
 }
 
 // Reorient loop direction
+bool PerimeterGenerator::loop_counter_clockwise(bool runs_with_contour) const
+{
+    // Slyce: Bambu Studio orients every loop the same way, by the printer's print_in_clockwise
+    // (bambulab/BambuStudio, src/libslic3r/GCode.cpp, GCode::extrude_loop). Matching it keeps a
+    // Bambu printer's G-code the same as Bambu Studio's. Overhang reversal runs after this and
+    // still applies. Other printers keep wall_direction. See docs/decisions/0012.
+    if (bambu_loop_direction)
+        return !print_config->print_in_clockwise.value;
+    return (config->wall_direction == WallDirection::CounterClockwise) == runs_with_contour;
+}
+
 static void reorient_perimeters(ExtrusionEntityCollection &entities, bool steep_overhang_contour, bool steep_overhang_hole, bool reverse_internal_only)
 {
     if (steep_overhang_hole || steep_overhang_contour) {

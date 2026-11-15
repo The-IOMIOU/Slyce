@@ -182,6 +182,28 @@ public:
     bool no_sort() const override { return true; }
 };
 
+// Slyce: Bambu Studio's monotonic line fill with gap fill (bambulab/BambuStudio,
+// src/libslic3r/Fill/FillRectilinear.{hpp,cpp}), used instead of FillMonotonicLines for
+// ipMonotonicLine on Bambu printers so their top surfaces match Bambu Studio's G-code.
+// Selected in Layer::make_fills(). See docs/decisions/0012-bambu-engine-parity.md.
+class FillMonotonicLineWGapFill : public Fill
+{
+public:
+    ~FillMonotonicLineWGapFill() override = default;
+    void fill_surface_extrusion(const Surface *surface, const FillParams &params, ExtrusionEntitiesPtr &out) override;
+    bool is_self_crossing() override { return false; }
+
+    // monotonic_travel_into_wall / 100: how far, as a fraction of the line width, links run past line ends.
+    float gap_compensation_ratio{0.f};
+
+protected:
+    Fill* clone() const override { return new FillMonotonicLineWGapFill(*this); }
+    bool no_sort() const override { return true; }
+
+private:
+    void fill_surface_by_lines(const Surface* surface, const FillParams& params, Polylines& polylines_out);
+};
+
 //Orca: Replaced with FillMonotonicLines, inheriting from FillRectilinear
 /*class FillMonotonicLineWGapFill : public Fill
 {

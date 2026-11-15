@@ -2546,6 +2546,18 @@ void PrintConfigDef::init_fff_params()
     def->mode = comAdvanced;
     def->set_default_value(new ConfigOptionEnum<EnsureVerticalShellThickness>(EnsureVerticalShellThickness::evstAll));
     
+    // Slyce: same key, meaning, limits and default as Bambu Studio, so Bambu's process profiles load it.
+    def           = this->add("monotonic_travel_into_wall", coPercent);
+    def->category = L("Strength");
+    def->label    = L("Monotonic line travel extend");
+    def->tooltip  = L("Bambu Lab printers only. Extends the link between monotonic line top surface lines into the walls, "
+                      "as a percentage of the line width, as Bambu Studio does, to improve how the top surface bonds to the walls.");
+    def->sidetext = u8"%";
+    def->mode     = comAdvanced;
+    def->min      = 0;
+    def->max      = 200;
+    def->set_default_value(new ConfigOptionPercent(0));
+
     auto def_top_fill_pattern = def = this->add("top_surface_pattern", coEnum);
     def->label = L("Top surface pattern");
     def->category = L("Strength");
@@ -4617,6 +4629,15 @@ void PrintConfigDef::init_fff_params()
     def->mode=comAdvanced;
     def->set_default_value(new ConfigOptionBool(true));
     def->readonly=false;
+
+    // Slyce: same key, meaning and default as Bambu Studio, so Bambu's printer profiles load it.
+    def          = this->add("print_in_clockwise", coBool);
+    def->label   = L("Print loops clockwise");
+    def->tooltip = L("Bambu Lab printers only. Extrude every wall loop, holes included, clockwise when enabled, "
+                     "or counter-clockwise when disabled, as Bambu Studio does. Other printers use the "
+                     "process setting \"Wall loop direction\" instead.");
+    def->mode    = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(false));
 
     def =this->add("support_air_filtration",coBool);
     def->label=L("Support air filtration");

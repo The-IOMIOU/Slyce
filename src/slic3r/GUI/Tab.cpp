@@ -5638,6 +5638,7 @@ void TabPrinter::build_fff()
 
         optgroup->append_single_option_line("use_relative_e_distances", "printer_basic_information_advanced#use-relative-e-distances");
         optgroup->append_single_option_line("use_firmware_retraction", "printer_basic_information_advanced#use-firmware-retraction");
+        optgroup->append_single_option_line("print_in_clockwise"); // Slyce: Bambu printers' loop direction
         // optgroup->append_single_option_line("spaghetti_detector");
         optgroup->append_single_option_line("time_cost", "printer_basic_information_advanced#time-cost");
         optgroup->append_single_option_line("build_plate_tilt_x", "printer_basic_information_advanced#build-plate-tilt");
@@ -6756,7 +6757,7 @@ void TabPrinter::toggle_options()
         const auto &printer_cfg = m_preset_bundle->printers.get_edited_preset().config;
 
         // SoftFever: hide BBL specific settings
-        for (auto el : {"scan_first_layer", "bbl_calib_mark_logo", "bbl_use_printhost"})
+        for (auto el : {"scan_first_layer", "bbl_calib_mark_logo", "bbl_use_printhost", "print_in_clockwise" /* Slyce */})
             toggle_line(el, is_BBL_printer, -1, _L("This setting requires a Bambu Lab printer."));
 
         // SoftFever: hide non-BBL settings

@@ -969,6 +969,32 @@ TEST_CASE("Holes run against the wall direction", "[Perimeters]")
     }
 }
 
+// Slyce: on Bambu Lab printers every loop, holes included, runs in the direction set by the printer's
+// print_in_clockwise, as Bambu Studio's GCode::extrude_loop does, whatever wall_direction says.
+TEST_CASE("Bambu printers run every loop in the print_in_clockwise direction", "[Perimeters]")
+{
+    const bool  clockwise      = GENERATE(false, true);
+    const char *wall_direction = GENERATE("ccw", "cw");
+    const char *generator      = GENERATE("classic", "arachne");
+    CAPTURE(clockwise, wall_direction, generator);
+
+    DynamicPrintConfig config = hole_direction_config(2, wall_direction);
+    config.set_deserialize_strict({{"print_in_clockwise", clockwise}, {"wall_generator", generator}});
+    Print print;
+    print.is_BBL_printer() = true;
+    Model model;
+    square_tube(print, model, config, 7., 7.);
+    const std::vector<WallDirections> layers = wall_directions(print);
+    REQUIRE(layers.size() == 25);
+    for (size_t i = 0; i < layers.size(); ++ i) {
+        CAPTURE(i);
+        REQUIRE(layers[i].contours_ccw.size() == 1);
+        REQUIRE(layers[i].holes_ccw.size() == 1);
+        CHECK(layers[i].contours_ccw.front() == ! clockwise);
+        CHECK(layers[i].holes_ccw.front() == ! clockwise);
+    }
+}
+
 // A hole whose outer wall touches the contour's all around, with nothing between them, runs with the contour
 // on every layer, so the two walls of a thin tube are laid side by side in the same direction.
 TEST_CASE("A hole whose outer wall touches the contour's runs with it", "[Perimeters]")

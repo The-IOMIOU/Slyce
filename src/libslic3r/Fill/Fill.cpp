@@ -1373,7 +1373,16 @@ void Layer::make_fills(const FillAdaptive::RegionOctrees* fill_octrees, FillLigh
 
     for (SurfaceFill &surface_fill : surface_fills) {
         // Create the filler object.
-        std::unique_ptr<Fill> f = std::unique_ptr<Fill>(Fill::new_from_type(surface_fill.params.pattern));
+        std::unique_ptr<Fill> f;
+        if (surface_fill.params.pattern == ipMonotonicLine && this->object()->print()->is_BBL_printer()) {
+            // Slyce: Bambu Studio's monotonic line fill with gap fill on Bambu printers, so their top surfaces
+            // match Bambu Studio's G-code. See docs/decisions/0012-bambu-engine-parity.md.
+            auto *monotonic_line = new FillMonotonicLineWGapFill();
+            monotonic_line->gap_compensation_ratio =
+                float(m_regions[surface_fill.region_id]->region().config().monotonic_travel_into_wall.value) * 0.01f;
+            f.reset(monotonic_line);
+        } else
+            f = std::unique_ptr<Fill>(Fill::new_from_type(surface_fill.params.pattern));
         f->set_bounding_box(bbox);
         f->layer_id = this->id();
         {
