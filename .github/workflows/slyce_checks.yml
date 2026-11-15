@@ -1,0 +1,52 @@
+# Copyright (c) 2026 Tiberiu Bolohan. Licensed under AGPL-3.0
+# Fast Slyce-specific checks that do not need the full C++ build:
+#   * G-code parity harness unit tests (tools/gcode_parity)
+#   * decision records exist for every subsystem listed in docs/ARCHITECTURE.md
+# The full app build and upstream unit tests run in build_all.yml (inherited from OrcaSlicer).
+name: Slyce checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parity-harness:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit tests
+        working-directory: tools/gcode_parity
+        run: python -m unittest discover -s tests -v
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decision records referenced from ARCHITECTURE.md exist
+        run: |
+          set -e
+          missing=0
+          for f in $(grep -oE 'decisions/[0-9]{4}-[a-z0-9-]+\.md' docs/ARCHITECTURE.md docs/decisions/README.md | cut -d: -f2 | sort -u); do
+            if [ ! -f "docs/$f" ]; then echo "missing docs/$f"; missing=1; fi
+          done
+          exit $missing
+      - name: Slyce-authored files carry the licence header
+        run: |
+          set -e
+          bad=0
+          for f in $(git ls-files 'tools/gcode_parity/**.py' 'docs/decisions/*.md' docs/ARCHITECTURE.md docs/BUILDING.md); do
+            head -3 "$f" | grep -q "Copyright (c) 2026 Tiberiu Bolohan. Licensed under AGPL-3.0" || { echo "no header: $f"; bad=1; }
+          done
+          exit $bad

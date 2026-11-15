@@ -4,6 +4,7 @@ on:
     types: [ released ]
 jobs:
   publish:
+    if: github.repository == 'OrcaSlicer/OrcaSlicer' # Slyce: publishes OrcaSlicer to winget, off in forks
     runs-on: windows-latest
     steps:
       - uses: vedantmgoyal9/winget-releaser@main

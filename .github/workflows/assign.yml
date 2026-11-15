@@ -11,6 +11,7 @@ jobs:
   assign:
     permissions:
       issues: write
+    if: github.repository == 'OrcaSlicer/OrcaSlicer' # Slyce: upstream maintainer bot, off in forks
     runs-on: ubuntu-latest
     steps:
       - name: Assign the user or unassign stale assignments
