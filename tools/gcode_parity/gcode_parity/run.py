@@ -47,7 +47,8 @@ def slice_with(exe: Path, model: Path, settings: list[Path], filaments: list[Pat
         cmd += ["--load-filaments", ";".join(str(p) for p in filaments)]
     cmd += ["--arrange", "1", "--slice", "0", "--export-3mf", str(out_3mf), *extra]
     out_3mf.parent.mkdir(parents=True, exist_ok=True)
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    # Run inside the case folder: both CLIs drop a result.json into their working directory.
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, cwd=out_3mf.parent)
 
 
 def _resolve(case_value: str, base: Path | None) -> Path:

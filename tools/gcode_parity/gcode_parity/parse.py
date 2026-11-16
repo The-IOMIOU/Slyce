@@ -22,6 +22,7 @@ FEATURE_PREFIXES = ("; FEATURE:", ";TYPE:")
 TEMP_CODES = {"M104", "M109", "M140", "M190"}
 FAN_CODES = {"M106", "M107"}
 TOOL_CODES = {"M620", "M621"}
+ACCEL_CODES = {"M204", "M201", "M203", "M205"}
 
 
 @dataclass
@@ -48,6 +49,8 @@ class ParsedGCode:
     tool_changes: list[str]         # T<n>, M620 ..., M621 ...
     total_extrusion: float
     header: dict[str, str]          # key: value pairs from the header block
+    accelerations: list[str] = field(default_factory=list)  # M204 / M201 / M203 / M205 in order
+    lifts: list[float] = field(default_factory=list)        # Z rise of each non-extruding Z move (z-hop heights)
 
 
 def normalise_command(line: str) -> str:
@@ -103,6 +106,8 @@ def parse_gcode(text: str) -> ParsedGCode:
     temps: list[str] = []
     fans: list[str] = []
     tools: list[str] = []
+    accels: list[str] = []
+    lifts: list[float] = []
     after_last_extrusion: list[str] = []
 
     x = y = z = e = 0.0
@@ -182,6 +187,8 @@ def parse_gcode(text: str) -> ParsedGCode:
                     cur.travel_length += length
             if de > 0:
                 total_e += de
+            if cur is not None and de <= 1e-9 and nz > z + 1e-6 and (nx, ny) == (x, y):
+                lifts.append(round(nz - z, 4))
             x, y, z = nx, ny, nz
         elif code in TEMP_CODES:
             temps.append(cmd)
@@ -189,6 +196,8 @@ def parse_gcode(text: str) -> ParsedGCode:
             fans.append(cmd)
         elif code in TOOL_CODES or re.fullmatch(r"T\d+", code):
             tools.append(cmd)
+        elif code in ACCEL_CODES:
+            accels.append(cmd)
 
     return ParsedGCode(
         layers=layers,
@@ -198,5 +207,7 @@ def parse_gcode(text: str) -> ParsedGCode:
         fans=fans,
         tool_changes=tools,
         total_extrusion=total_e,
+        accelerations=accels,
+        lifts=lifts,
         header=_parse_header(lines),
     )

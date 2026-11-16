@@ -554,7 +554,17 @@ static std::vector<Vec2d> get_path_of_change_filament(const Print& print)
         // Nothing to retract - return early
         if (retraction_length_remaining <= EPSILON)
             return { 0.f, 0.f, 0.f };
-        
+
+        // Slyce: Bambu Studio splits the retraction its own way (bambulab/BambuStudio, GCode.cpp,
+        // Wipe::wipe): retract_before_wipe up front, then 95% of the rest spread along the wipe with
+        // no cap from retraction_speed; the last 5% is left to the retract that follows the wipe.
+        // Match it on Bambu printers so their G-code matches Bambu Studio's.
+        // See docs/decisions/0012-bambu-engine-parity.md.
+        if (gcodegen.is_BBL_Printer()) {
+            const double before = retraction_length_remaining * extruder->retract_before_wipe();
+            return { before, (retraction_length_remaining - before) * 0.95, 0. };
+        }
+
         // Calculate retraction before and after wipe distances from the user setting. 
         // Keep adding to the for retraction before wipe variable any excess retraction 
         // needed to be performed before the wipe.
@@ -2685,6 +2695,18 @@ namespace DoExport {
     }
 } // namespace DoExport
 
+// Slyce: Bambu Studio always turns power-loss recovery on at the second layer and off at the end on
+// Bambu printers. Bambu's profiles do not carry OrcaSlicer's enable_power_loss_recovery key, so on a
+// Bambu printer "printer configuration" (the default) behaves as Bambu Studio does; an explicit
+// choice is respected. See docs/decisions/0012-bambu-engine-parity.md.
+PowerLossRecoveryMode GCode::effective_power_loss_recovery(const Print &print)
+{
+    const PowerLossRecoveryMode mode = print.config().enable_power_loss_recovery.value;
+    if (print.is_BBL_printer() && mode == PowerLossRecoveryMode::PrinterConfiguration)
+        return PowerLossRecoveryMode::Enable;
+    return mode;
+}
+
 bool GCode::is_BBL_Printer()
 {
     if (m_curr_print)
@@ -4739,7 +4761,7 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
 
                 // Orca: disable power loss recovery if it was enabled earlier
                 {
-                    const auto plr_mode = print.config().enable_power_loss_recovery.value;
+                    const auto plr_mode = effective_power_loss_recovery(print);
                     if (m_second_layer_things_done && plr_mode == PowerLossRecoveryMode::Enable) {
                         file.write(m_writer.enable_power_loss_recovery(PowerLossRecoveryMode::Disable));
                     }
@@ -4820,7 +4842,7 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
             }
 
             // Orca: disable power loss recovery
-            if (m_second_layer_things_done && print.config().enable_power_loss_recovery.value == PowerLossRecoveryMode::Enable) {
+            if (m_second_layer_things_done && effective_power_loss_recovery(print) == PowerLossRecoveryMode::Enable) {
                 file.write(m_writer.enable_power_loss_recovery(PowerLossRecoveryMode::Disable));
             }
             if (m_wipe_tower)
@@ -4830,7 +4852,9 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
     }
     //BBS: the last retraction
     // Write end commands to file.
-    file.write(this->retract(false, true));
+    // Slyce: Bambu Studio ends with a spiral lift on its printers (GCode::do_export,
+    // retract(false, true, LiftType::SpiralLift, true)); match it there.
+    file.write(print.is_BBL_printer() ? this->retract(false, true, LiftType::SpiralLift, true) : this->retract(false, true));
 
     // if needed, write the gcode_label_objects_end
     {
@@ -6897,7 +6921,7 @@ LayerResult GCode::process_layer(
 
     if (past_first_layer_band && !m_second_layer_things_done) {
         // Orca: set power loss recovery
-        const auto plr_mode = print.config().enable_power_loss_recovery.value;
+        const auto plr_mode = effective_power_loss_recovery(print);
         gcode += m_writer.enable_power_loss_recovery(plr_mode);
 
         if (print.is_BBL_printer()) {
@@ -8477,6 +8501,7 @@ std::string GCode::preamble()
 std::string GCode::change_layer(coordf_t print_z)
 {
     std::string gcode;
+    const double z_before_layer_change = m_writer.get_position().z(); // Slyce
     if (m_layer_count > 0)
         // Increment a progress bar indicator.
         gcode += m_writer.update_progress(++ m_layer_index, m_layer_count);
@@ -8501,6 +8526,13 @@ std::string GCode::change_layer(coordf_t print_z)
 
     m_nominal_z = z;
     m_writer.get_position().z() = z;
+    // Slyce: Bambu Studio leaves the Z position on the old layer until the travel, so its layer-change
+    // lift ends z_hop above the layer just printed (GCode::change_layer). The position moves here (the
+    // wipe tower needs it), so take the layer step off the pending lift to land at the same height.
+    if (is_BBL_Printer() && !m_spiral_vase && z > z_before_layer_change) {
+        m_writer.reduce_pending_lift(z - z_before_layer_change);
+        m_layer_change_from_z = z_before_layer_change; // for an instant lift, see GCode::retract
+    }
 
     // forget last wiping path as wiping after raising Z is pointless
     // BBS. Dont forget wiping path to reduce stringing.
@@ -10553,7 +10585,14 @@ std::string GCode::travel_to(const Point& point, ExtrusionRole role, std::string
         const bool is_short_travel = travel.length() < scale_(FILAMENT_CONFIG(retraction_minimum_travel));
 
         if (NOZZLE_CONFIG(default_acceleration) > 0) {
-            if (role == erOverhangPerimeter && is_short_travel) {
+            // Slyce: Bambu Studio uses travel_short_distance_acceleration for short travels into outer and
+            // overhang walls (bambulab/BambuStudio, GCode::travel_to / GCodeWriter::set_travel_acceleration).
+            const double bambu_short_travel_acceleration =
+                is_BBL_Printer() ? NOZZLE_CONFIG(travel_short_distance_acceleration) : 0.;
+            if ((role == erExternalPerimeter || role == erOverhangPerimeter) && is_short_travel &&
+                bambu_short_travel_acceleration > 0) {
+                acceleration_to_set = (unsigned int) floor(bambu_short_travel_acceleration + 0.5);
+            } else if (role == erOverhangPerimeter && is_short_travel) {
                 const double bridge_acceleration  = m_config.get_abs_value_at("bridge_acceleration", get_nozzle_config_index(m_writer.filament()->id()));
 
                 if (bridge_acceleration > 0)
@@ -10906,8 +10945,13 @@ std::string GCode::retract(bool toolchange, bool is_last_retraction, LiftType li
     }
 
     if (needs_lift && can_lift) {
-        if (apply_instantly)
-            gcode += m_writer.eager_lift(lift_type);
+        if (apply_instantly) {
+            // Slyce: the first instant lift after a layer change on a Bambu printer starts from the layer just
+            // printed, as in Bambu Studio (its Z position has not moved yet at that point).
+            const double lift_from_z = m_need_change_layer_lift_z ? m_layer_change_from_z : std::numeric_limits<double>::quiet_NaN();
+            gcode += m_writer.eager_lift(lift_type, lift_from_z);
+            m_layer_change_from_z = std::numeric_limits<double>::quiet_NaN();
+        }
         else
             gcode += m_writer.lazy_lift(lift_type, m_spiral_vase != nullptr);
     }

@@ -322,6 +322,8 @@ public:
     // what every non-IMEX caller wants, and what imex_pem_tool_for() returns off IMEX.
     std::string     set_filament_pressure_advance(unsigned int filament_id, int tool = -1);
     bool is_BBL_Printer();
+    // Slyce: power-loss recovery mode as Bambu Studio applies it on Bambu printers.
+    static PowerLossRecoveryMode effective_power_loss_recovery(const Print &print);
     WipeTowerType wipe_tower_type();
 
     void assign_object_label_ids(Print &print);
@@ -940,6 +942,8 @@ protected:
     double   m_sub_layer_flow_ratio = 0.0;
     double   m_sub_layer_height     = 0.0;
     bool m_need_change_layer_lift_z = false;
+    // Slyce: on Bambu printers, the height of the layer just printed, for the first lift after a layer change.
+    double m_layer_change_from_z = std::numeric_limits<double>::quiet_NaN();
     int m_start_gcode_filament = -1;
     std::string m_filament_instances_code;
 

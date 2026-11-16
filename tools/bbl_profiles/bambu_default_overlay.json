@@ -1,0 +1,28 @@
+{
+  "_comment": [
+    "Copyright (c) 2026 Tiberiu Bolohan. Licensed under AGPL-3.0",
+    "Bambu Studio's built-in defaults for settings that Bambu's own presets leave unset and that",
+    "Slyce defaults differently. Without these the same preset slices differently in the two apps.",
+    "Found by diffing the effective config both apps embed in their G-code for the same P1S and P2S",
+    "case (Bambu Studio 02.09.01.70). Only settings with the same key and meaning in both apps are",
+    "listed; values use Slyce's enum names (Bambu's 'zig-zag' is ipRectilinear, Slyce's 'rectilinear').",
+    "bbl_profiles.py sync writes each into the named base preset when that file does not set it.",
+    "See docs/decisions/0011-bambu-presets.md."
+  ],
+  "process/fdm_process_common.json": {
+    "precise_outer_wall": "0",
+    "internal_solid_infill_pattern": "rectilinear",
+    "ironing_pattern": "rectilinear",
+    "support_ironing_pattern": "rectilinear",
+    "seam_gap": "15%",
+    "seam_slope_conditional": "1",
+    "seam_slope_inner_walls": "1",
+    "enable_prime_tower": "1",
+    "exclude_object": "1",
+    "travel_jerk": "9",
+    "accel_to_decel_enable": "0"
+  },
+  "machine/fdm_machine_common.json": {
+    "bed_temperature_formula": "by_first_filament"
+  }
+}

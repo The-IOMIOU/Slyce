@@ -2,10 +2,12 @@
 #define slic3r_GCodeWriter_hpp_
 
 #include "libslic3r.h"
+#include <algorithm>
 #include <cstddef>
 #include <cassert>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <cstring>
 #include <string>
 #include <charconv>
@@ -121,7 +123,10 @@ public:
     // Default 0 -> byte-identical to the plain deretract.
     std::string unretract(float extra_retract = 0.f);
     // do lift instantly
-    std::string eager_lift(const LiftType type);
+    // Slyce: lift_from_z, when given, makes the lift end z_hop above that height instead of above the current
+    // position (Bambu Studio lifts from the layer just printed at a layer change); the lift recorded for the
+    // following unlift is the part above the current position, so the descent still lands where it should.
+    std::string eager_lift(const LiftType type, double lift_from_z = std::numeric_limits<double>::quiet_NaN());
     // record a lift request, do realy lift in next travel
     std::string lazy_lift(LiftType lift_type = LiftType::NormalLift, bool spiral_vase = false);
     std::string unlift();
@@ -129,6 +134,9 @@ public:
     Vec3d&       get_position() { return m_pos; }
     void        set_position(const Vec3d& in) { m_pos = in; }
     double      get_zhop() const { return m_lifted; }
+    // Slyce: lower a lift that is still pending by dz (never below zero). Used when the Z position moves
+    // to a new layer before the lift runs, so the lift stays measured from the old height.
+    void        reduce_pending_lift(double dz) { m_to_lift = std::max(0., m_to_lift - dz); }
 
     //BBS: set offset for gcode writer
     void set_xy_offset(double x, double y) { m_x_offset = x; m_y_offset = y; }

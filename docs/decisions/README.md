@@ -18,6 +18,8 @@ where that is the truth.
 | [0009](0009-fork-history-and-branding.md) | Fork history, branding, copyright headers | Accepted |
 | [0010](0010-strengthening-and-ai.md) | Strengthening + AI design help | Proposed |
 | [0011](0011-bambu-presets.md) | Bambu presets copied exactly from Bambu Studio | Accepted; done for all models except H3C |
+| [0012](0012-bambu-engine-parity.md) | Bambu Studio engine behaviour on Bambu printers | In progress |
+| [0013](0013-support-free-overhangs.md) | Support-free overhangs: port WaveOverhangs | Accepted; port planned |
 
 ## Licence compatibility table
 
@@ -42,6 +44,8 @@ the metadata was ambiguous), November 2026.
 | Elmer | GPL-2.0 (solver) / LGPL-2.1 (libs) — "or later" not verified | Not verified | Not chosen |
 | CurviSlicer | AGPL-3.0 | Yes | Non-planar reference |
 | S4 Slicer | GPL-3.0 | Yes | Non-planar reference |
+| WaveOverhangs (OrcaSlicer fork) | AGPL-3.0 | Yes (same) | Support-free overhangs, to be ported |
+| arc-overhang (McCulloch, CNC Kitchen, PrusaSlicer integration) | GPL-3.0 | Yes | Reference |
 | MCP Python SDK | MIT | Yes | MCP server |
 | bambulabs_api, ha-bambulab | MIT | Yes | Protocol reference |
 | OpenBambuAPI | GFDL-1.3 (documentation) | Docs only; we re-implement from it, we do not copy text into code | Protocol reference |

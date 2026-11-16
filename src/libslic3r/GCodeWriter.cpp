@@ -933,7 +933,7 @@ std::string GCodeWriter::lazy_lift(LiftType lift_type, bool spiral_vase)
 
 // BBS: immediately execute an undelayed lift move with a spiral lift pattern
 // designed specifically for subsequent gcode injection (e.g. timelapse)
-std::string GCodeWriter::eager_lift(const LiftType type) {
+std::string GCodeWriter::eager_lift(const LiftType type, double lift_from_z) {
     const LiftType effective_type = m_force_normal_lift ? LiftType::NormalLift : type;
     std::string lift_move;
     double target_lift = 0;
@@ -946,10 +946,14 @@ std::string GCodeWriter::eager_lift(const LiftType type) {
         if (m_pos.z() >= above && (m_pos.z() <= below || below == 0.))
             target_lift = this->config.z_hop.get_at(config_index);
     }
+    // Slyce: the spiral's radius follows the full z_hop, as in Bambu Studio, even when the lift is shortened.
+    const double full_lift = target_lift;
+    if (! std::isnan(lift_from_z) && target_lift > 0)
+        target_lift = std::max(0., lift_from_z + target_lift - m_pos.z());
 
     // BBS: spiral lift only safe with known position
     if (effective_type == LiftType::SpiralLift && this->is_current_position_clear()) {
-        double radius = target_lift / (2 * PI * atan(filament()->travel_slope()));
+        double radius = full_lift / (2 * PI * atan(filament()->travel_slope()));
         // static spiral alignment when no move in x,y plane.
         // spiral centra is a radius distance to the right (y=0)
         Vec2d ij_offset = { radius, 0 };
@@ -1222,7 +1226,9 @@ std::string GCodeWriter::_spiral_travel_to_z(double z, const Vec2d &ij_offset, c
                                  : this->config.travel_speed.get_at(m_cached_extruder_idx);
     }
 
-    if (this->config.enable_arc_fitting.value == ArcFittingMode::Disabled) { // Orca: if arc fitting is disabled, approximate the arc with small linear segments
+    // Slyce: Bambu Studio always writes the spiral lift as a G2/G3 arc on Bambu printers, whose firmware takes it,
+    // whatever arc fitting is set to; only approximate it on other printers.
+    if (this->config.enable_arc_fitting.value == ArcFittingMode::Disabled && !m_is_bbl_printers) { // Orca: if arc fitting is disabled, approximate the arc with small linear segments
         const double z_start = m_pos(2); // starting Z height
 
         const double px = m_pos(0) - m_x_offset;        // take plate offset into consideration

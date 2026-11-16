@@ -168,5 +168,6 @@
 	"machine_end_gcode": "M400 ; wait for buffer to clear\nG92 E0 ; zero the extruder\nG1 E-4.0 F3600; retract \nG91\nG1 Z3;\nM104 S0 ; turn off hotend\nM140 S0 ; turn off bed\nM106 S0 ; turn off fan\nG90 \nG0 X110 Y200 F3600 \nprint_end",
 	"time_lapse_gcode": "",
 	"wrapping_detection_gcode": "",
-	"change_filament_gcode": ""
+	"change_filament_gcode": "",
+	"bed_temperature_formula": "by_first_filament"
 }

@@ -1,7 +1,7 @@
 <!-- Copyright (c) 2026 Tiberiu Bolohan. Licensed under AGPL-3.0 -->
 # 0012 — Bambu Studio engine behaviour on Bambu printers
 
-**Status:** In progress. Loop direction ported; the rest are planned, in order of measured impact.
+**Status:** In progress. Measurements: [docs/parity](../parity/README.md). Ported so far: loop direction, monotonic-line top fill, wipe retraction split, layer-change lift height, short-travel acceleration, power-loss recovery, final spiral lift (as an arc); plus a default-value overlay for the presets (decision 0011).
 
 ## Why
 
@@ -24,7 +24,7 @@ its code can be ported into Slyce with attribution.
 | --- | --- | --- | --- | --- |
 | Loop direction: every loop, holes included, one direction from the printer's `print_in_clockwise` | `GCode.cpp` `GCode::extrude_loop` | ✓ (CCW) | ✓ (CW) | **Ported** (`PerimeterGenerator::loop_counter_clockwise`, test in `tests/fff_print/test_perimeters.cpp`). OrcaSlicer ran holes opposite to contours, so this changed P1S holes too. On Bambu printers the process setting *Wall loop direction* is greyed out; *Print loops clockwise* is in the printer settings. OrcaSlicer's *reverse on odd* overhang option runs after it and still works. |
 | Monotonic-line top surface with gap fill and link extension (`monotonic_travel_into_wall`) | `Fill/FillRectilinear.cpp` `FillMonotonicLineWGapFill`, `plan_monotonic_route`, `append_monotonic_route`; `ExtrusionEntity.hpp` `extrusion_entities_append_paths_with_wipe` | top surface on 24/29 processes | 45 % on all processes | **Ported, not yet compiled or measured.** OrcaSlicer had replaced this class with PrusaSlicer's `FillMonotonicLines`, so Bambu-printer top surfaces differed. `Layer::make_fills` now uses Bambu's class for `monotonicline` top surfaces on Bambu printers; `monotonic_travel_into_wall` is a process setting with Bambu's key, limits and default. |
-| Floating vertical shells (`detect_floating_vertical_shell`) | `PrintObject.cpp` (shell discovery), `Fill/FillFloatingConcentric.cpp` (984 lines), surface type `stFloatingVerticalShell`, role `erFloatingVerticalShell` | ✓ | ✓ | Planned. Large: new surface type, role and fill. |
+| Floating vertical shells (`detect_floating_vertical_shell`) | `Fill/Fill.cpp` (narrow internal-solid areas that sit on sparse infill below become `stFloatingVerticalShell`), `Fill/FillFloatingConcentric.cpp` (984 lines), role `erFloatingVerticalShell`, `GCode.cpp` (bridge-speed paths flagged `cfFloatingVerticalShell`), `GCode/GCodeProcessor.cpp` | ✓ | ✓ | Planned. Large. OrcaSlicer rewrote the narrow-solid-infill split (`split_solid_surface`) and has no `stSubTop` surface type, which Bambu's version also handles, so this may pull in sub-top surfaces too. Sized after the first parity measurement. |
 | Cooling slowdown `uniform_cooling` | `GCode/CoolingBuffer.cpp` | ✓ | ✓ | Likely already equivalent: uniform is the classic proportional/non-proportional slowdown OrcaSlicer inherited; Bambu's new path is `consistent_surface`, unused by these presets. To confirm with the harness. |
 | Preheat next filament before AMS change (`filament_pre_heating_enabled`) | `GCode/WipeTower.cpp`, `GCode/GCodeProcessor.cpp` | ✓ | ✓ | Planned; multi-colour prints only. |
 | Prime tower line ironing (`prime_tower_line_ironing`) | `GCode/WipeTower.cpp` | ✓ | ✓ | Planned; multi-colour prints only. |

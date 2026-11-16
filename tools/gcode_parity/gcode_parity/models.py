@@ -57,18 +57,30 @@ def cylinder(r: float, h: float, segments: int = 64) -> list[Tri]:
     return out
 
 
-def overhang_ramp(width: float = 20.0, length: float = 30.0, height: float = 15.0) -> list[Tri]:
-    """A wedge whose sloped underside overhangs at atan(height/length)."""
-    a, b = (0, 0, 0), (0, width, 0)
-    c, d = (0, 0, height), (0, width, height)
-    e, f = (length, 0, height), (length, width, height)
+def _signed_volume(tris: list[Tri]) -> float:
+    return sum((a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0])
+                + a[2] * (b[0] * c[1] - b[1] * c[0])) / 6 for a, b, c in tris)
+
+
+def prism_xz(profile: list[tuple[float, float]], depth: float) -> list[Tri]:
+    """Extrude a convex (x, z) profile along y from 0 to depth, wound so normals point outwards."""
+    n = len(profile)
+    front = [(x, 0.0, z) for x, z in profile]
+    back = [(x, depth, z) for x, z in profile]
     out: list[Tri] = []
-    out += _quad(a, e, f, b)          # sloped underside
-    out += _quad(c, d, f, e)          # top
-    out += _quad(a, b, d, c)          # back wall
-    out.append((a, c, e))             # side
-    out.append((b, f, d))             # side
-    return [(t[0], t[2], t[1]) for t in out]   # wound so normals point outwards
+    for i in range(1, n - 1):
+        out.append((front[0], front[i], front[i + 1]))
+        out.append((back[0], back[i + 1], back[i]))
+    for i in range(n):
+        j = (i + 1) % n
+        out += _quad(front[i], back[i], back[j], front[j])
+    return out if _signed_volume(out) > 0 else [(t[0], t[2], t[1]) for t in out]
+
+
+def overhang_ramp(depth: float = 20.0) -> list[Tri]:
+    """A block that sits flat on the bed (10 mm footprint) and leans out 15 mm over 15 mm of height:
+    a 45-degree overhang on one side, the case overhang speeds, cooling and wall handling are tuned for."""
+    return prism_xz([(0, 0), (10, 0), (25, 15), (0, 15)], depth)
 
 
 def square_tube(size: float = 20.0, wall: float = 4.0, height: float = 10.0) -> list[Tri]:

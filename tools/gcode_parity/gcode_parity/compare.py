@@ -40,6 +40,18 @@ def _status(value: float, tol: float) -> str:
     return WITHIN if value <= tol else DIFFERS
 
 
+def _header_seconds(header: dict[str, str]) -> float | None:
+    """Total estimated time from the G-code header, e.g. 'model printing time: 8m 39s; total estimated time: 14m 54s'."""
+    import re
+    text = header.get("model printing time", "")
+    m = re.search(r"total estimated time:\s*([0-9dhms ]+)", text) or re.search(r"([0-9dhms ]+)", text)
+    if not m:
+        return None
+    units = {"d": 86400, "h": 3600, "m": 60, "s": 1}
+    parts = re.findall(r"(\d+)\s*([dhms])", m.group(1))
+    return float(sum(int(v) * units[u] for v, u in parts)) if parts else None
+
+
 def _sequence(name: str, ref: list[str], cand: list[str], max_details: int) -> CategoryResult:
     if ref == cand:
         return CategoryResult(name, IDENTICAL, f"{len(ref)} commands, identical")
@@ -120,8 +132,21 @@ def compare(ref: ParsedGCode, cand: ParsedGCode, tol: Tolerances | None = None,
     results.append(_sequence("temperatures", ref.temperatures, cand.temperatures, max_details))
     results.append(_sequence("fans", ref.fans, cand.fans, max_details))
     results.append(_sequence("tool changes / AMS", ref.tool_changes, cand.tool_changes, max_details))
-    results.append(_sequence("start sequence", ref.start_sequence, cand.start_sequence, max_details))
-    results.append(_sequence("end sequence", ref.end_sequence, cand.end_sequence, max_details))
+    results.append(_sequence("accelerations (M204/M201/M203/M205)", ref.accelerations, cand.accelerations, max_details))
+    lr = sorted(set(ref.lifts)); lc = sorted(set(cand.lifts))
+    results.append(CategoryResult(
+        "z-hop lifts", IDENTICAL if ref.lifts == cand.lifts else DIFFERS,
+        f"reference {len(ref.lifts)} lifts of {lr[:6]} mm vs candidate {len(cand.lifts)} lifts of {lc[:6]} mm"))
+    # M73 lines are progress / time-remaining estimates, not motion; compared under "estimated time".
+    def no_m73(seq: list[str]) -> list[str]:
+        return [c for c in seq if not c.startswith("M73")]
+    results.append(_sequence("start sequence", no_m73(ref.start_sequence), no_m73(cand.start_sequence), max_details))
+    results.append(_sequence("end sequence", no_m73(ref.end_sequence), no_m73(cand.end_sequence), max_details))
+    tr, tc = _header_seconds(ref.header), _header_seconds(cand.header)
+    if tr is not None and tc is not None:
+        d = _rel(tr, tc)
+        results.append(CategoryResult("estimated time", IDENTICAL if d == 0 else DIFFERS,
+                                      f"{tr:.0f} vs {tc:.0f} s ({d:.2%}), slicer's own estimate"))
     return results
 
 

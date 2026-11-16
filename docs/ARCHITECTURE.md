@@ -60,6 +60,7 @@ used below are exact: **inherited** means it is upstream OrcaSlicer code we have
 | Stress simulation (MFEM + CGAL, in-process) | planned (phase 5) | [0004](decisions/0004-fea-solver.md) |
 | Bambu presets identical to Bambu Studio 02.09.01.70 | done (all models except H3C); Bambu-only engine features still to port | [0011](decisions/0011-bambu-presets.md) |
 | Non-planar technique plugins | research only (phase 6) | [0007](decisions/0007-nonplanar-printing.md) |
+| Support-free overhangs (WaveOverhangs port) | planned | [0013](decisions/0013-support-free-overhangs.md) |
 | Strengthening + AI design help | planned (phase 7), consumes FEA results and MCP tools | [0010](decisions/0010-strengthening-and-ai.md) |
 
 ## Data flow for the core loop

@@ -283,6 +283,31 @@ def sync_model(bambu: Tree, slyce: Tree, model: str, bambu_known: set[str]) -> d
     return log
 
 
+OVERLAY = Path(__file__).with_name("bambu_default_overlay.json")
+
+
+def apply_default_overlay(slyce: Tree, overlay_path: Path = OVERLAY) -> dict[str, list[str]]:
+    """Write Bambu Studio's built-in defaults (bambu_default_overlay.json) into the named base presets,
+    for keys those files do not set. Returns the keys written per file."""
+    overlay = json.loads(overlay_path.read_text(encoding="utf-8"))
+    written: dict[str, list[str]] = {}
+    for sub, values in overlay.items():
+        if sub.startswith("_"):
+            continue
+        path = slyce.root / "BBL" / sub
+        data = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=OrderedDict)
+        added = [k for k in values if k not in data]
+        if not added:
+            continue
+        for k in added:
+            data[k] = values[k]
+        text = path.read_text(encoding="utf-8")
+        indent = "\t" if text.startswith("{\n\t") else 4   # keep the file's own indentation
+        path.write_text(json.dumps(data, indent=indent, ensure_ascii=False) + "\n", encoding="utf-8")
+        written[sub] = added
+    return written
+
+
 def _order_index_parents_first(index: dict, bambu: Tree) -> None:
     """Keep the vendor index in Bambu Studio's order for names Bambu Studio lists, so every parent
     precedes its children; names only Slyce has stay where they were relative to each other."""
@@ -317,6 +342,7 @@ def main(argv=None) -> int:
             raw_bambu = Tree(args.bambu)
             raw_bambu.loader = None
             log = sync_model(raw_bambu, slyce, model, bambu_known)
+            log["default_overlay"] = apply_default_overlay(Tree(args.slyce, slyce_loader))
             print(f"{model}: wrote {len(log['written'])} preset files, added {len(log['added_to_index'])} "
                   f"to BBL.json, kept Slyce-only keys in {len(log['kept_slyce_only_keys'])} files")
             out[model] = log
